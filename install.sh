@@ -252,6 +252,7 @@ detect_or_install_platform() {
             mkdir -p "$NPM_GLOBAL_DIR"
             npm config set prefix "$NPM_GLOBAL_DIR"
             export PATH="$NPM_GLOBAL_DIR/bin:$PATH"
+            hash -r 2>/dev/null || true  # flush bash command cache
             # Persist to shell RC so openclaw is on PATH after install
             for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
                 if [[ -f "$RC" ]] && ! grep -q "npm-global" "$RC" 2>/dev/null; then
@@ -263,7 +264,10 @@ detect_or_install_platform() {
         fi
 
         npm install -g openclaw
-        ok "OpenClaw $(openclaw --version 2>/dev/null | head -1) installed"
+        # Resolve openclaw bin explicitly — don't rely on PATH cache
+        OPENCLAW_CMD="$(npm config get prefix)/bin/openclaw"
+        hash -r 2>/dev/null || true
+        ok "OpenClaw $("$OPENCLAW_CMD" --version 2>/dev/null | head -1) installed"
         PLATFORM="openclaw"
 
         # Skip model config in CI (no human present)
@@ -279,7 +283,7 @@ detect_or_install_platform() {
             echo "  • xAI (Grok)         — x.ai/api"
             echo "  • Groq               — groq.com (free tier available)"
             echo ""
-            openclaw configure --section model
+            "$OPENCLAW_CMD" configure --section model
         fi
     else
         warn "Skipping platform install. Add one later: agentforge init --platform openclaw"
