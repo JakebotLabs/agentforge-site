@@ -251,7 +251,7 @@ detect_or_install_platform() {
             npm config set prefix "$NPM_PREFIX"
             info "Using user-local npm prefix: $NPM_PREFIX"
         fi
-        export PATH="$(npm config get prefix)/bin:$PATH"
+        export PATH="$NPM_PREFIX/bin:$PATH"
         hash -r 2>/dev/null || true
 
         npm install -g openclaw
