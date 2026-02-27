@@ -277,11 +277,9 @@ detect_or_install_platform() {
         ok "OpenClaw $("$OPENCLAW_CMD" --version 2>/dev/null | head -1) installed"
         PLATFORM="openclaw"
 
-        # Skip model config in CI (no human present)
-        if [[ "${CI:-}" == "true" ]]; then
-            warn "CI mode — skipping model configuration."
-            warn "Run manually after install: openclaw configure --section model"
-        else
+        # Only run interactive configure if we have a real terminal.
+        # curl | bash and CI both have no tty — skip and prompt user to run manually.
+        if [[ -t 0 && "${CI:-}" != "true" ]]; then
             echo ""
             echo -e "${BOLD}🔑 Configure your AI model${RESET}"
             echo "You'll need an API key from one of these providers:"
@@ -291,6 +289,12 @@ detect_or_install_platform() {
             echo "  • Groq               — groq.com (free tier available)"
             echo ""
             "$OPENCLAW_CMD" configure --section model
+        else
+            echo ""
+            ok "OpenClaw installed. Run this next to configure your AI model:"
+            echo ""
+            echo -e "  ${BOLD}openclaw configure${RESET}"
+            echo ""
         fi
     else
         warn "Skipping platform install. Add one later: agentforge init --platform openclaw"
