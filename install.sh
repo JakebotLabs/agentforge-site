@@ -244,28 +244,29 @@ detect_or_install_platform() {
         info "Installing OpenClaw..."
 
         # Ensure npm global installs don't require root.
-        # If the current prefix is a system path, switch to a user-local one.
+        # Always use ~/.npm-global as the install target — explicit --prefix
+        # on the install command guarantees location regardless of npm config files.
+        NPM_GLOBAL_DIR="$HOME/.npm-global"
+        mkdir -p "$NPM_GLOBAL_DIR"
         NPM_PREFIX_CURRENT=$(npm config get prefix 2>/dev/null || echo "")
         if [[ "$NPM_PREFIX_CURRENT" == /usr* || "$NPM_PREFIX_CURRENT" == /opt* ]]; then
-            NPM_GLOBAL_DIR="$HOME/.npm-global"
             info "Configuring user-local npm prefix (~/.npm-global) to avoid permission errors..."
-            mkdir -p "$NPM_GLOBAL_DIR"
             npm config set prefix "$NPM_GLOBAL_DIR"
-            export PATH="$NPM_GLOBAL_DIR/bin:$PATH"
-            hash -r 2>/dev/null || true  # flush bash command cache
-            # Persist to shell RC so openclaw is on PATH after install
-            for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-                if [[ -f "$RC" ]] && ! grep -q "npm-global" "$RC" 2>/dev/null; then
-                    echo '' >> "$RC"
-                    echo '# npm global (AgentForge)' >> "$RC"
-                    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$RC"
-                fi
-            done
         fi
+        export PATH="$NPM_GLOBAL_DIR/bin:$PATH"
+        hash -r 2>/dev/null || true  # flush bash command cache
+        # Persist to shell RC so openclaw is on PATH in future sessions
+        for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+            if [[ -f "$RC" ]] && ! grep -q "npm-global" "$RC" 2>/dev/null; then
+                echo '' >> "$RC"
+                echo '# npm global (AgentForge)' >> "$RC"
+                echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$RC"
+            fi
+        done
 
-        npm install -g openclaw
-        # Resolve openclaw bin explicitly — don't rely on PATH cache
-        OPENCLAW_CMD="$(npm config get prefix)/bin/openclaw"
+        npm install -g openclaw --prefix "$NPM_GLOBAL_DIR"
+        # Use explicit path — never rely on bash PATH cache after prefix change
+        OPENCLAW_CMD="$NPM_GLOBAL_DIR/bin/openclaw"
         hash -r 2>/dev/null || true
         ok "OpenClaw $("$OPENCLAW_CMD" --version 2>/dev/null | head -1) installed"
         PLATFORM="openclaw"
