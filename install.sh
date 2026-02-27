@@ -256,7 +256,17 @@ detect_or_install_platform() {
 
         npm install -g openclaw
         OPENCLAW_CMD="$NPM_PREFIX/bin/openclaw"
-        [[ ! -x "$OPENCLAW_CMD" ]] && fail "openclaw installed but binary not found at $OPENCLAW_CMD — check npm logs"
+        # npm v10 sometimes skips bin symlink creation if bin/ dir pre-exists.
+        # If the symlink is missing but the package landed correctly, create it manually.
+        if [[ ! -x "$OPENCLAW_CMD" ]]; then
+            OPENCLAW_MJS="$NPM_PREFIX/lib/node_modules/openclaw/openclaw.mjs"
+            if [[ -f "$OPENCLAW_MJS" ]]; then
+                ln -sf "$OPENCLAW_MJS" "$OPENCLAW_CMD"
+                chmod +x "$OPENCLAW_MJS"
+            else
+                fail "openclaw install failed — package not found under $NPM_PREFIX"
+            fi
+        fi
         ok "OpenClaw $("$OPENCLAW_CMD" --version 2>/dev/null | head -1) installed"
         PLATFORM="openclaw"
 
