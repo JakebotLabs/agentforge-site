@@ -247,12 +247,12 @@ detect_or_install_platform() {
         NPM_PREFIX=$(npm config get prefix 2>/dev/null || echo "")
         if [[ ! -w "$NPM_PREFIX" ]]; then
             NPM_PREFIX="$HOME/.npm-global"
-            mkdir -p "$NPM_PREFIX"
-            npm config set prefix "$NPM_PREFIX"
             info "Using user-local npm prefix: $NPM_PREFIX"
         fi
+        mkdir -p "$NPM_PREFIX/bin"
+        # Export as env var — highest priority, overrides all npm config files including system-level
+        export npm_config_prefix="$NPM_PREFIX"
         export PATH="$NPM_PREFIX/bin:$PATH"
-        hash -r 2>/dev/null || true
 
         npm install -g openclaw
         OPENCLAW_CMD="$NPM_PREFIX/bin/openclaw"
