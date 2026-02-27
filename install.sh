@@ -242,6 +242,26 @@ detect_or_install_platform() {
 
     if [[ "${install_oc,,}" =~ ^y ]]; then
         info "Installing OpenClaw..."
+
+        # Ensure npm global installs don't require root.
+        # If the current prefix is a system path, switch to a user-local one.
+        NPM_PREFIX_CURRENT=$(npm config get prefix 2>/dev/null || echo "")
+        if [[ "$NPM_PREFIX_CURRENT" == /usr* || "$NPM_PREFIX_CURRENT" == /opt* ]]; then
+            NPM_GLOBAL_DIR="$HOME/.npm-global"
+            info "Configuring user-local npm prefix (~/.npm-global) to avoid permission errors..."
+            mkdir -p "$NPM_GLOBAL_DIR"
+            npm config set prefix "$NPM_GLOBAL_DIR"
+            export PATH="$NPM_GLOBAL_DIR/bin:$PATH"
+            # Persist to shell RC so openclaw is on PATH after install
+            for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+                if [[ -f "$RC" ]] && ! grep -q "npm-global" "$RC" 2>/dev/null; then
+                    echo '' >> "$RC"
+                    echo '# npm global (AgentForge)' >> "$RC"
+                    echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$RC"
+                fi
+            done
+        fi
+
         npm install -g openclaw
         ok "OpenClaw $(openclaw --version 2>/dev/null | head -1) installed"
         PLATFORM="openclaw"
@@ -345,6 +365,8 @@ ok "agentforge $INSTALLED_VERSION"
 # ── 7. Initialize ─────────────────────────────────────────────
 echo ""
 "$LOCAL_BIN/agentforge" init --platform "$PLATFORM" --no-install
+ok "Workspace bootstrap complete — bot is aware of its stack"
+info "Next: edit ~/.agentforge/workspace/SOUL.md to define your mission"
 
 # ── 8. Start services ─────────────────────────────────────────
 echo ""
