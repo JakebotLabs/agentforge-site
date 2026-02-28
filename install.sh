@@ -416,8 +416,11 @@ for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
 done
 # System-wide coverage (idempotent — tee overwrites if already written by npm-global block)
 if [[ -d /etc/profile.d ]]; then
-    echo 'export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"' | sudo tee /etc/profile.d/agentforge.sh > /dev/null
-    sudo chmod +x /etc/profile.d/agentforge.sh
+    # Refresh sudo credentials in case they timed out during long installs
+    sudo -v 2>/dev/null && \
+    echo 'export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"' | sudo tee /etc/profile.d/agentforge.sh > /dev/null && \
+    sudo chmod +x /etc/profile.d/agentforge.sh || \
+    true  # non-fatal if sudo timed out
 fi
 
 ok "Command installed: $LOCAL_BIN/agentforge"
@@ -543,3 +546,11 @@ fi
 
 [[ "$OPTIONAL_SHOWN" == "true" ]] && echo ""
 echo ""
+
+# Activate PATH in the current shell session so commands work immediately
+# without needing to open a new terminal.
+if [[ -f "$HOME/.bashrc" ]]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.bashrc" 2>/dev/null || true
+fi
+export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
