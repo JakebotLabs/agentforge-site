@@ -376,12 +376,29 @@ fi
 "$AGENTFORGE_HOME/venv/bin/pip" install -q "$AGENTFORGE_HOME/repo"
 ok "Python environment ready"
 
-info "Installing memory layer (ChromaDB + NetworkX) — this takes 2-4 minutes on first run..."
+info "Installing memory layer (ChromaDB + NetworkX) — this takes 5-15 minutes on first run..."
 "$AGENTFORGE_HOME/venv/bin/pip" install -q chromadb sentence-transformers networkx 2>&1 | tail -1
 ok "Memory layer ready"
 
-info "Installing health monitoring (agent-healthkit)..."
-"$AGENTFORGE_HOME/venv/bin/pip" install -q agent-healthkit 2>/dev/null && ok "HealthKit ready" || warn "HealthKit install failed — install manually: pip install agent-healthkit"
+# Initialize ChromaDB at the right location.
+# agentforge init will later point memory.path here, so doctor can verify it.
+if [[ "$PLATFORM" == "openclaw" ]]; then
+    # Ensure openclaw workspace dir exists (openclaw configure may not have created it yet)
+    mkdir -p "$HOME/.openclaw/workspace"
+    MEMORY_DIR="$HOME/.openclaw/workspace/vector_memory"
+else
+    MEMORY_DIR="$AGENTFORGE_HOME/workspace/vector_memory"
+fi
+mkdir -p "$MEMORY_DIR"
+"$AGENTFORGE_HOME/venv/bin/python" -c "
+import chromadb
+chromadb.PersistentClient(path='$MEMORY_DIR/chroma_db')
+" 2>/dev/null && ok "Memory layer initialized at $MEMORY_DIR" || warn "Memory init skipped — run: agentforge init"
+
+info "Checking health monitoring (agent-healthkit)..."
+# agent-healthkit is not yet on PyPI — skip pip install, show guidance instead
+warn "HealthKit not on PyPI yet — install from source after setup:"
+warn "  git clone https://github.com/JakebotLabs/agent-healthkit.git && pip install -e agent-healthkit"
 
 DASHBOARD_DIR="$AGENTFORGE_HOME/dashboard"
 if [[ ! -d "$DASHBOARD_DIR" ]]; then
